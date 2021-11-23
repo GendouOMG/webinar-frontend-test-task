@@ -18,7 +18,7 @@ interface TodoItemsState {
 }
 
 interface TodoItemsAction {
-    type: 'loadState' | 'add' | 'delete' | 'toggleDone';
+    type: 'loadState' | 'add' | 'delete' | 'toggleDone' | 'onDragEnd';
     data: any;
 }
 
@@ -102,6 +102,15 @@ function todoItemsReducer(state: TodoItemsState, action: TodoItemsAction) {
                     { ...item, done: !item.done },
                     ...state.todoItems.slice(itemIndex + 1),
                 ],
+            };
+        case 'onDragEnd':
+            const tempList = Array.from(state.todoItems);
+            const [reorderedList] = tempList.splice(action.data.sourceIndex, 1);
+            tempList.splice(action.data.destinationIndex, 0, reorderedList);
+
+            return {
+                ...state,
+                todoItems: [...tempList],
             };
         default:
             throw new Error();

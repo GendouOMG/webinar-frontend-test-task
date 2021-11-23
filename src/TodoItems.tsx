@@ -11,6 +11,7 @@ import { makeStyles } from '@material-ui/core/styles';
 import classnames from 'classnames';
 import { motion } from 'framer-motion';
 import { TodoItem, useTodoItems } from './TodoItemsContext';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
 const spring = {
     type: 'spring',
@@ -21,13 +22,19 @@ const spring = {
 
 const useTodoItemListStyles = makeStyles({
     root: {
+        display: 'flex',
+        flexDirection: 'column',
         listStyle: 'none',
         padding: 0,
     },
+    item: {
+        position: "static",
+    }
 });
 
 export const TodoItemsList = function () {
     const { todoItems } = useTodoItems();
+    const { dispatch } = useTodoItems();
 
     const classes = useTodoItemListStyles();
 
@@ -43,14 +50,59 @@ export const TodoItemsList = function () {
         return 0;
     });
 
+    // The indices of the dragged elements in the initial array are determined and passed to the handler.
+    const handleOnDragEnd = ({ destination, source }: DropResult) => {
+        if(!destination || destination.index === source.index) {
+            return;
+        }
+        const sourceIndex = source.index;
+        const destinationIndex = destination.index;
+
+        const sourceId = sortedItems[sourceIndex].id;
+        const destinationId = sortedItems[destinationIndex].id;
+
+        const originSourceIndex = todoItems.findIndex(
+            item => item.id === sourceId
+        );
+        const originDestinationIndex = todoItems.findIndex(
+            item => item.id === destinationId
+        );
+
+        dispatch({
+            type: 'onDragEnd',
+            data: {
+                sourceIndex: originSourceIndex,
+                destinationIndex: originDestinationIndex,
+            },
+        })
+    }
+
+    // Lots of levels of react-beautiful-dnd ... Putting it in a separate component will add a bit of complexity to the logic.
     return (
-        <ul className={classes.root}>
-            {sortedItems.map((item) => (
-                <motion.li key={item.id} transition={spring} layout={true}>
-                    <TodoItemCard item={item} />
-                </motion.li>
-            ))}
-        </ul>
+        <DragDropContext onDragEnd={handleOnDragEnd}>
+            <Droppable droppableId='droppable-list'>
+                {(provided: any) => (
+                    <ul className={classes.root} {...provided.droppableProps} ref={provided.innerRef}>
+                        {sortedItems.map((item, index) => (
+                            <Draggable key={item.id} draggableId={item.id} index={index}>
+                                {(provided: any) => (
+                                    <motion.li
+                                        transition={spring}
+                                        layout={false}
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                    >
+                                        <TodoItemCard item={item} />
+                                    </motion.li>
+                                )}
+                            </Draggable>
+                        ))}
+                        {provided.placeholder}
+                    </ul>
+                )}
+            </Droppable>
+        </DragDropContext>
     );
 };
 
