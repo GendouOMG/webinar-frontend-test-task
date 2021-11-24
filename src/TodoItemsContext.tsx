@@ -36,7 +36,8 @@ export const TodoItemsContextProvider = ({
 }) => {
     const [state, dispatch] = useReducer(todoItemsReducer, defaultState);
 
-    useEffect(() => {
+    // Getting LocalStorage
+    const loadLacalStorage = () => {
         const savedState = localStorage.getItem(localStorageKey);
 
         if (savedState) {
@@ -44,6 +45,23 @@ export const TodoItemsContextProvider = ({
                 dispatch({ type: 'loadState', data: JSON.parse(savedState) });
             } catch {}
         }
+    };
+
+    // Updating state on every change LocalStorage
+    useEffect(() => {
+        window.addEventListener('storage', (event) => {
+            if (event.storageArea !== localStorage) {
+                return;
+            };
+
+            loadLacalStorage();
+        });
+
+    }, []);
+
+    // First load LocalStorage 
+    useEffect(() => {
+        loadLacalStorage();
     }, []);
 
     useEffect(() => {
