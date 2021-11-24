@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import Card from '@material-ui/core/Card';
 import CardHeader from '@material-ui/core/CardHeader';
 import CardContent from '@material-ui/core/CardContent';
@@ -7,11 +7,16 @@ import IconButton from '@material-ui/core/IconButton';
 import Checkbox from '@material-ui/core/Checkbox';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import DeleteIcon from '@material-ui/icons/Delete';
+import EditIcon from '@material-ui/icons/Edit';
+import CancelIcon from '@material-ui/icons/Cancel';
+import DoneIcon from '@material-ui/icons/Done';
 import { makeStyles } from '@material-ui/core/styles';
 import classnames from 'classnames';
 import { motion } from 'framer-motion';
 import { TodoItem, useTodoItems } from './TodoItemsContext';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { useForm, Controller } from 'react-hook-form';
+import TextField from '@material-ui/core/TextField';
 
 const spring = {
     type: 'spring',
@@ -75,7 +80,7 @@ export const TodoItemsList = function () {
                 destinationIndex: originDestinationIndex,
             },
         })
-    }
+    };
 
     // Lots of levels of react-beautiful-dnd ... Putting it in a separate component will add a bit of complexity to the logic.
     return (
@@ -115,16 +120,26 @@ const useTodoItemCardStyles = makeStyles({
         textDecoration: 'line-through',
         color: '#888888',
     },
+    editedRoot: {
+        margin: 24,
+    }
 });
 
 export const TodoItemCard = function ({ item }: { item: TodoItem }) {
     const classes = useTodoItemCardStyles();
     const { dispatch } = useTodoItems();
 
+    // Edit mode variable (off/on)
+    const [isEdited, setIsEdited] = useState<boolean>(false);
+
     const handleDelete = useCallback(
         () => dispatch({ type: 'delete', data: { id: item.id } }),
         [item.id, dispatch],
     );
+
+    const handleEdit = () => {
+        setIsEdited(true);
+    };
 
     const handleToggleDone = useCallback(
         () =>
@@ -135,6 +150,12 @@ export const TodoItemCard = function ({ item }: { item: TodoItem }) {
         [item.id, dispatch],
     );
 
+    if(isEdited) {
+        return (
+                <TodoItemEdit item={item} setIsEdited={setIsEdited} />
+        );
+    }
+
     return (
         <Card
             className={classnames(classes.root, {
@@ -143,9 +164,14 @@ export const TodoItemCard = function ({ item }: { item: TodoItem }) {
         >
             <CardHeader
                 action={
-                    <IconButton aria-label="delete" onClick={handleDelete}>
-                        <DeleteIcon />
-                    </IconButton>
+                    <div>
+                        <IconButton aria-label="edit" onClick={handleEdit}>
+                            <EditIcon />
+                        </IconButton>
+                        <IconButton aria-label="delete" onClick={handleDelete}>
+                            <DeleteIcon />
+                        </IconButton>
+                    </div>
                 }
                 title={
                     <FormControlLabel
@@ -171,3 +197,84 @@ export const TodoItemCard = function ({ item }: { item: TodoItem }) {
         </Card>
     );
 };
+
+const useTodoItemEditStyles = makeStyles({
+    root: {
+        marginTop: 24,
+        marginBottom: 24,
+        paddingLeft: 24,
+        paddingRight: 24,
+    }
+});
+
+// Item appearance when editing
+export const TodoItemEdit = function({setIsEdited, item}: {setIsEdited: any, item: TodoItem}) {
+    const classes = useTodoItemEditStyles();
+    const { dispatch } = useTodoItems();
+    
+    const { control, handleSubmit, watch } = useForm();
+
+    // Checking for obvious errors and updating an item
+    const sendItemUpdate = (title="", details="") => {
+        if(title === item.title && details === item.details) {
+            return;
+        }
+        if(title === "") {
+            return;
+        }
+
+        dispatch({
+            type: 'edit',
+            data: {
+                id: item.id,
+                title: title,
+                details: details,
+            },
+        })
+
+    };
+
+    return (
+        <Card className={classes.root}>
+            <form
+                onSubmit={handleSubmit((formData) => {
+                    sendItemUpdate(formData.title, formData.details);
+                    setIsEdited(false);
+                })}
+            >
+                <Controller
+                    name="title"
+                    control={control}
+                    defaultValue={item.title}
+                    rules={{ required: true }}
+                    render={({ field }) => (
+                        <TextField
+                            {...field}
+                            label="TODO"
+                            fullWidth={true}
+                        />
+                    )}
+                />
+                <Controller
+                    name="details"
+                    control={control}
+                    defaultValue={item.details}
+                    render={({ field }) => (
+                        <TextField
+                            {...field}
+                            label="Details"
+                            fullWidth={true}
+                            multiline={true}
+                        />
+                    )}
+                />
+                <IconButton aria-label="submit" type="submit" disabled={watch('title') === '' }>
+                    <DoneIcon />
+                </IconButton>
+                <IconButton aria-label="cancel" type="button" onClick={()=>setIsEdited(false)}>
+                    <CancelIcon />
+                </IconButton>
+            </form>
+        </Card>
+    );
+}

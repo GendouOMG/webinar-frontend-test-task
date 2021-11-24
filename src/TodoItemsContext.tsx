@@ -18,7 +18,7 @@ interface TodoItemsState {
 }
 
 interface TodoItemsAction {
-    type: 'loadState' | 'add' | 'delete' | 'toggleDone' | 'onDragEnd';
+    type: 'loadState' | 'add' | 'delete' | 'toggleDone' | 'onDragEnd' | 'edit';
     data: any;
 }
 
@@ -111,6 +111,23 @@ function todoItemsReducer(state: TodoItemsState, action: TodoItemsAction) {
             return {
                 ...state,
                 todoItems: [...tempList],
+            };
+        case 'edit':
+            const title = action.data.title;
+            const details = action.data.details;
+
+            const editedItemIndex = state.todoItems.findIndex(
+                ({ id }) => id === action.data.id,
+            );
+            const editedItem = state.todoItems[editedItemIndex];
+
+            return {
+                ...state,
+                todoItems: [
+                    ...state.todoItems.slice(0, editedItemIndex),
+                    { ...editedItem, title: title, details:details },
+                    ...state.todoItems.slice(editedItemIndex + 1),
+                ],
             };
         default:
             throw new Error();
